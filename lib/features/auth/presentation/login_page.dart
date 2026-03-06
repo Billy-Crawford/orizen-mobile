@@ -24,37 +24,39 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _loading = true);
 
     try {
-      // Appel backend
+      // 🔹 Appel du backend
       final response = await _authService.login(
         username: _usernameController.text.trim(),
         password: _passwordController.text,
       );
 
       final data = response.data as Map<String, dynamic>;
-
       final access = data['access'];
       final refresh = data['refresh'];
 
-      // Décodage du token pour récupérer le rôle
+      // 🔹 Décoder le token pour récupérer le rôle et l'ID utilisateur
       final decodedToken = JwtDecoder.decode(access);
-      final role = decodedToken['role'] ?? 'student';
 
-      // Sauvegarde des tokens
+      final role = decodedToken['role'] ?? 'student';
+      final userIdStr = decodedToken['user_id'] ?? '0';
+      final userId = int.tryParse(userIdStr.toString()) ?? 0;
+
+      // 🔹 Sauvegarde des tokens et de l'ID
       await TokenService.saveTokens(
         access: access,
         refresh: refresh,
         role: role,
+        userId: userId,
       );
 
       if (!mounted) return;
 
-      // Redirection vers le RoleRouter (qui contient la navbar)
+      // 🔹 Redirection vers RoleRouter qui contient la navbar et dashboard selon rôle
       Navigator.pushReplacementNamed(context, "/role-router");
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Connexion réussie")),
       );
-
     } catch (e, st) {
       print("ERREUR LOGIN: $e\n$st");
 
@@ -120,7 +122,9 @@ class _LoginPageState extends State<LoginPage> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const RegisterPage()),
+                    MaterialPageRoute(
+                      builder: (_) => const RegisterPage(),
+                    ),
                   );
                 },
                 child: const Text("Créer un compte"),
@@ -132,5 +136,4 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
-
 

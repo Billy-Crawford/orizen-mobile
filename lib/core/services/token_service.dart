@@ -8,11 +8,13 @@ class TokenService {
   static const _accessKey = "access_token";
   static const _refreshKey = "refresh_token";
   static const _roleKey = "user_role";
+  static const _userIdKey = "user_id"; // <- nouvel ajout
 
   static Future<void> saveTokens({
     required String access,
     String? refresh,
     required String role,
+    required int userId, // <- nouvel ajout
   }) async {
     await _storage.write(key: _accessKey, value: access);
 
@@ -21,6 +23,7 @@ class TokenService {
     }
 
     await _storage.write(key: _roleKey, value: role);
+    await _storage.write(key: _userIdKey, value: userId.toString()); // <- stocker l'ID
   }
 
   static Future<String?> getAccessToken() {
@@ -31,14 +34,20 @@ class TokenService {
     return _storage.read(key: _roleKey);
   }
 
-  // 🔹 supprimer uniquement les tokens
+  // 🔹 obtenir l'ID de l'utilisateur connecté
+  static Future<int?> getUserId() async {
+    final value = await _storage.read(key: _userIdKey);
+    if (value == null) return null;
+    return int.tryParse(value);
+  }
+
   static Future<void> clearTokens() async {
     await _storage.delete(key: _accessKey);
     await _storage.delete(key: _refreshKey);
     await _storage.delete(key: _roleKey);
+    await _storage.delete(key: _userIdKey); // <- supprimer aussi l'ID
   }
 
-  // 🔹 supprimer tout le stockage
   static Future<void> clear() async {
     await _storage.deleteAll();
   }

@@ -1,8 +1,11 @@
 // lib/features/student/presentation/student_dashboard.dart
 
 import 'package:flutter/material.dart';
+import '../../student/presentation/orientation_history_page.dart';
+import '../../student/presentation/orientation_test_page.dart';
 import '../data/student_service.dart';
-import 'my_advisor_page.dart'; // 🔹 importer la page
+import 'my_advisor_page.dart';
+
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
@@ -61,7 +64,6 @@ class _StudentDashboardState extends State<StudentDashboard> {
       appBar: AppBar(
         title: const Text("Tableau de bord étudiant"),
         actions: [
-          // 🔹 Bouton pour voir mon conseiller
           IconButton(
             icon: const Icon(Icons.person),
             tooltip: "Mon conseiller",
@@ -74,19 +76,75 @@ class _StudentDashboardState extends State<StudentDashboard> {
           ),
         ],
       ),
-      body: ListView.builder(
-        itemCount: _advisors.length,
-        itemBuilder: (context, index) {
-          final advisor = _advisors[index];
-          return ListTile(
-            title: Text(advisor['username']),
-            subtitle: Text(advisor['email']),
-            trailing: ElevatedButton(
-              child: const Text("Demande"),
-              onPressed: () => _sendRequest(advisor['id']),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+
+            // ================== Test d'orientation ==================
+            const Text(
+              "Orientation",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-          );
-        },
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const OrientationTestPage()),
+                      );
+                    },
+                    child: const Text("Commencer le test"),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const OrientationHistoryPage()),
+                      );
+                    },
+                    child: const Text("Voir l'historique"),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 30),
+
+            // ================== Liste des conseillers ==================
+            const Text(
+              "Liste des conseillers disponibles",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _advisors.length,
+              itemBuilder: (context, index) {
+                final advisor = _advisors[index];
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  child: ListTile(
+                    title: Text(advisor['username']),
+                    subtitle: Text(advisor['email']),
+                    trailing: ElevatedButton(
+                      child: const Text("Demande"),
+                      onPressed: () => _sendRequest(advisor['id']),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
