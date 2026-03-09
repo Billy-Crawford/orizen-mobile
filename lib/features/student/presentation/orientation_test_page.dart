@@ -1,5 +1,7 @@
 // lib/features/student/presentation/orientation_test_page.dart
 
+// lib/features/student/presentation/orientation_test_page.dart
+
 import 'package:flutter/material.dart';
 import '../data/orientation_service.dart';
 
@@ -14,12 +16,14 @@ class _OrientationTestPageState extends State<OrientationTestPage> {
   final OrientationService _service = OrientationService();
 
   bool _loading = true;
-  bool _finished = false; // pour savoir si le test est terminé
+  bool _finished = false;
   int _testId = 0;
   int _currentPage = 1;
+
   List<dynamic> _questions = [];
-  Map<int, int> _answers = {}; // questionId -> choiceId
-  Map<String, dynamic>? _result; // résultat final du test
+  Map<int, int> _answers = {};
+
+  Map<String, dynamic>? _result;
 
   @override
   void initState() {
@@ -30,9 +34,22 @@ class _OrientationTestPageState extends State<OrientationTestPage> {
   Future<void> _startTest() async {
     try {
       final data = await _service.startTest();
+
+      if (data["can_take_test"] == false) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data["message"])),
+          );
+        }
+
+        Navigator.pop(context);
+        return;
+      }
+
       setState(() {
         _testId = data["session_id"];
       });
+
       await _loadQuestions();
     } catch (e) {
       print("Erreur start test: $e");
@@ -42,10 +59,10 @@ class _OrientationTestPageState extends State<OrientationTestPage> {
 
   Future<void> _loadQuestions() async {
     setState(() => _loading = true);
+
     try {
       final questions = await _service.getQuestions(_testId, _currentPage);
 
-      // si aucune question n'est renvoyée -> fin du test
       if (questions.isEmpty) {
         await _loadResult();
         return;
@@ -63,8 +80,10 @@ class _OrientationTestPageState extends State<OrientationTestPage> {
 
   Future<void> _loadResult() async {
     setState(() => _loading = true);
+
     try {
       final data = await _service.getResult(_testId);
+
       setState(() {
         _result = data;
         _finished = true;
@@ -86,10 +105,12 @@ class _OrientationTestPageState extends State<OrientationTestPage> {
   }
 
   void _nextPage() {
-    // vérifier que toutes les questions ont été répondues
     if (_questions.any((q) => !_answers.containsKey(q["id"]))) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Veuillez répondre à toutes les questions avant de continuer.")),
+        const SnackBar(
+          content: Text(
+              "Veuillez répondre à toutes les questions avant de continuer."),
+        ),
       );
       return;
     }
@@ -106,19 +127,79 @@ class _OrientationTestPageState extends State<OrientationTestPage> {
       );
     }
 
-    // si test terminé -> afficher résultat
     if (_finished && _result != null) {
+      final recommended = _result!["recommended_filiere"];
+      final interpretation = _result!["interpretation"];
+      final profile = _result!["student_profile"] ?? {};
+      final top3 = _result!["top_3"] ?? [];
+
       return Scaffold(
         appBar: AppBar(title: const Text("Résultat du test")),
         body: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: ListView(
             children: [
-              Text("Score: ${_result!['score'] ?? 'N/A'}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
-              Text("Recommandation: ${_result!['recommendation'] ?? 'N/A'}", style: const TextStyle(fontSize: 16)),
-              const SizedBox(height: 20),
+              const Text(
+                "Filière recommandée",
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+
+              const SizedBox(height: 10),
+
+              Text(
+                recommended ?? "Non disponible",
+                style: const TextStyle(fontSize: 20, color: Colors.green),
+              ),
+
+              const SizedBox(height: 25),
+
+              const Text(
+                "Top 3 des filières",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+
+              const SizedBox(height: 10),
+
+              ...top3.map<Widget>((f) {
+                return ListTile(
+                  leading: const Icon(Icons.school),
+                  title: Text(f["name"].toString()),
+                  trailing: Text("${f["score"]} pts"),
+                );
+              }).toList(),
+
+              const SizedBox(height: 25),
+
+              const Text(
+                "Profil RIASEC",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+
+              const SizedBox(height: 10),
+
+              ...profile.entries.map<Widget>((e) {
+                return ListTile(
+                  title: Text(e.key.toString()),
+                  trailing: Text(e.value.toString()),
+                );
+              }).toList(),
+
+              const SizedBox(height: 25),
+
+              const Text(
+                "Interprétation",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+
+              const SizedBox(height: 10),
+
+              Text(
+                interpretation ?? "",
+                style: const TextStyle(fontSize: 16),
+              ),
+
+              const SizedBox(height: 40),
+
               ElevatedButton(
                 onPressed: () => Navigator.pop(context),
                 child: const Text("Retour au tableau de bord"),
@@ -144,11 +225,15 @@ class _OrientationTestPageState extends State<OrientationTestPage> {
                   children: [
                     Text(
                       q["text"],
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 16),
                     ),
+
                     const SizedBox(height: 10),
+
                     ...q["choices"].map<Widget>((c) {
                       final selected = _answers[q["id"]] == c["id"];
+
                       return ListTile(
                         title: Text(c["text"]),
                         leading: Radio<int>(
@@ -158,10 +243,12 @@ class _OrientationTestPageState extends State<OrientationTestPage> {
                             setState(() {
                               _answers[q["id"]] = value!;
                             });
+
                             _submitAnswer(q["id"], value!);
                           },
                         ),
-                        tileColor: selected ? Colors.green.withOpacity(0.2) : null,
+                        tileColor:
+                        selected ? Colors.green.withOpacity(0.2) : null,
                       );
                     }).toList(),
                   ],
@@ -169,7 +256,9 @@ class _OrientationTestPageState extends State<OrientationTestPage> {
               ),
             );
           }).toList(),
+
           const SizedBox(height: 20),
+
           ElevatedButton(
             onPressed: _nextPage,
             child: const Text("Suivant"),
@@ -179,4 +268,6 @@ class _OrientationTestPageState extends State<OrientationTestPage> {
     );
   }
 }
+
+
 
