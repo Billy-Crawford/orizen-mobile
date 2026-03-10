@@ -12,11 +12,8 @@ class MyAdvisorPage extends StatefulWidget {
 }
 
 class _MyAdvisorPageState extends State<MyAdvisorPage> {
-
   final StudentService _service = StudentService();
-
   bool _loading = true;
-
   Map<String, dynamic>? _relation;
 
   @override
@@ -26,37 +23,34 @@ class _MyAdvisorPageState extends State<MyAdvisorPage> {
   }
 
   Future<void> _fetchMyAdvisor() async {
-
     try {
-
       final response = await _service.getMyAdvisor();
-
       setState(() {
         _relation = response.data;
         _loading = false;
       });
-
     } catch (e) {
-
-      print("Erreur fetch my advisor: $e");
-
+      debugPrint("Erreur fetch my advisor: $e");
       setState(() => _loading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-
     if (_loading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
-    if (_relation == null) {
+    // si aucun conseiller assigné
+    if (_relation == null || _relation!['advisor'] == null) {
       return const Scaffold(
         body: Center(
-          child: Text("Vous n'avez pas encore de conseiller"),
+          child: Text(
+            "Vous n'avez pas encore de conseiller pour chatter",
+            style: TextStyle(fontSize: 16),
+          ),
         ),
       );
     }
@@ -65,48 +59,34 @@ class _MyAdvisorPageState extends State<MyAdvisorPage> {
 
     return Scaffold(
       appBar: AppBar(title: const Text("Mon conseiller")),
-
       body: Padding(
         padding: const EdgeInsets.all(16),
-
         child: GestureDetector(
-
           onTap: () {
-
+            // Ouvre le chat uniquement si conseiller existant
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (_) => ChatPage(
-                  relationId: _relation!['id'], // ✅ relation id
-                  advisorName: advisor['username'],
+                  relationId: _relation!['id'],
+                  advisorName: advisor['username'] ?? "Conseiller",
                 ),
               ),
             );
           },
-
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
-              Text(
-                "Nom: ${advisor['username']}",
-                style: const TextStyle(fontSize: 18),
-              ),
-
+              Text("Nom: ${advisor['username'] ?? 'Inconnu'}",
+                  style: const TextStyle(fontSize: 18)),
               const SizedBox(height: 8),
-
-              Text(
-                "Email: ${advisor['email']}",
-                style: const TextStyle(fontSize: 16),
-              ),
-
+              Text("Email: ${advisor['email'] ?? ''}",
+                  style: const TextStyle(fontSize: 16)),
               const SizedBox(height: 20),
-
               const Text(
                 "Cliquez sur le conseiller pour ouvrir le chat",
                 style: TextStyle(color: Colors.grey),
               ),
-
             ],
           ),
         ),

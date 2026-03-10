@@ -6,7 +6,6 @@ import '../../student/presentation/orientation_test_page.dart';
 import '../data/student_service.dart';
 import 'my_advisor_page.dart';
 
-
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
 
@@ -17,38 +16,24 @@ class StudentDashboard extends StatefulWidget {
 class _StudentDashboardState extends State<StudentDashboard> {
   final StudentService _service = StudentService();
   bool _loading = true;
-  List<dynamic> _advisors = [];
+  Map<String, dynamic>? _myAdvisor;
 
   @override
   void initState() {
     super.initState();
-    _fetchAdvisors();
+    _fetchMyAdvisor();
   }
 
-  Future<void> _fetchAdvisors() async {
+  Future<void> _fetchMyAdvisor() async {
     try {
-      final response = await _service.getAdvisors();
+      final response = await _service.getMyAdvisor();
       setState(() {
-        _advisors = response.data;
+        _myAdvisor = response.data;
         _loading = false;
       });
     } catch (e) {
-      print("Erreur fetch advisors: $e");
+      debugPrint("Erreur fetch my advisor: $e");
       setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _sendRequest(int advisorId) async {
-    try {
-      final response = await _service.sendAdvisorRequest(advisorId);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(response.data['message'] ?? 'Demande envoyée')),
-      );
-    } catch (e) {
-      print("Erreur send request: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Erreur lors de l'envoi")),
-      );
     }
   }
 
@@ -62,19 +47,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Tableau de bord étudiant"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person),
-            tooltip: "Mon conseiller",
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const MyAdvisorPage()),
-              );
-            },
-          ),
-        ],
+        title: const Text("Tableau de bord"),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -82,35 +55,43 @@ class _StudentDashboardState extends State<StudentDashboard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
-            // ================== Test d'orientation ==================
+            // ================== Orientation ==================
             const Text(
               "Orientation",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const OrientationTestPage()),
-                      );
-                    },
-                    child: const Text("Commencer le test"),
+                  child: Card(
+                    color: Colors.blue.shade50,
+                    child: ListTile(
+                      leading: const Icon(Icons.school, color: Colors.blue),
+                      title: const Text("Commencer le test"),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const OrientationTestPage()),
+                        );
+                      },
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const OrientationHistoryPage()),
-                      );
-                    },
-                    child: const Text("Voir l'historique"),
+                  child: Card(
+                    color: Colors.blue.shade50,
+                    child: ListTile(
+                      leading: const Icon(Icons.history, color: Colors.blue),
+                      title: const Text("Historique"),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const OrientationHistoryPage()),
+                        );
+                      },
+                    ),
                   ),
                 ),
               ],
@@ -118,35 +99,82 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
             const SizedBox(height: 30),
 
-            // ================== Liste des conseillers ==================
-            const Text(
-              "Liste des conseillers disponibles",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            // ================== Mon conseiller ==================
+            Text(
+              "Mon conseiller",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _advisors.length,
-              itemBuilder: (context, index) {
-                final advisor = _advisors[index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  child: ListTile(
-                    title: Text(advisor['username']),
-                    subtitle: Text(advisor['email']),
-                    trailing: ElevatedButton(
-                      child: const Text("Demande"),
-                      onPressed: () => _sendRequest(advisor['id']),
+            _myAdvisor != null && _myAdvisor!['advisor'] != null
+                ? Card(
+              color: Colors.green.shade50,
+              child: ListTile(
+                leading: const Icon(Icons.person, color: Colors.green),
+                title: Text(_myAdvisor!['advisor']['username']),
+                subtitle: Text(_myAdvisor!['advisor']['email']),
+                trailing: const Icon(Icons.chat),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MyAdvisorPage(),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
+            )
+                : const Text(
+              "Vous n'avez pas encore de conseiller assigné.",
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+
+            const SizedBox(height: 30),
+
+            // ================== Raccourcis utiles ==================
+            const Text(
+              "Raccourcis",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: [
+                _buildShortcutCard(Icons.message, "Messages", Colors.orange, () {
+                  // TODO: rediriger vers la page messages
+                }),
+                _buildShortcutCard(Icons.assignment, "Mes cours", Colors.purple, () {
+                  // TODO: rediriger vers la page cours
+                }),
+                _buildShortcutCard(Icons.assignment_turned_in, "Mes candidatures", Colors.teal, () {
+                  // TODO: rediriger vers candidatures
+                }),
+              ],
             ),
           ],
         ),
       ),
     );
   }
-}
 
+  Widget _buildShortcutCard(IconData icon, String title, Color color, VoidCallback onTap) {
+    return Card(
+      color: color.withOpacity(0.1),
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: 120,
+          height: 100,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 36, color: color),
+              const SizedBox(height: 10),
+              Text(title, textAlign: TextAlign.center, style: TextStyle(color: color)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

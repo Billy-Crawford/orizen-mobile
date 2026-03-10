@@ -1,6 +1,7 @@
 // lib/features/chat/presentation/chat_page.dart
 
 import 'package:flutter/material.dart';
+import '../../../core/services/token_service.dart';
 import '../data/chat_service.dart';
 
 class ChatPage extends StatefulWidget {
@@ -22,15 +23,23 @@ class _ChatPageState extends State<ChatPage> {
   List messages = [];
   bool loading = true;
 
+  int? myUserId;
+
   final TextEditingController _controller = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    initChat();
+  }
+
+  Future<void> initChat() async {
+    myUserId = await TokenService.getUserId();
     loadMessages();
   }
 
   void loadMessages() async {
+
     setState(() => loading = true);
 
     final data = await ChatService.getMessages(widget.relationId);
@@ -42,6 +51,7 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void sendMessage() async {
+
     final content = _controller.text.trim();
     if (content.isEmpty) return;
 
@@ -49,7 +59,36 @@ class _ChatPageState extends State<ChatPage> {
 
     await ChatService.sendMessage(widget.relationId, content);
 
-    loadMessages(); // recharge les messages après envoi
+    loadMessages();
+  }
+
+  Widget buildMessage(Map m) {
+
+    final bool isMe = m["sender"] == myUserId;
+
+    return Align(
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+        padding: const EdgeInsets.all(12),
+        constraints: const BoxConstraints(maxWidth: 280),
+        decoration: BoxDecoration(
+          color: isMe ? Colors.blue : Colors.grey[300],
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(12),
+            topRight: const Radius.circular(12),
+            bottomLeft: Radius.circular(isMe ? 12 : 0),
+            bottomRight: Radius.circular(isMe ? 0 : 12),
+          ),
+        ),
+        child: Text(
+          m["message"] ?? "",
+          style: TextStyle(
+            color: isMe ? Colors.white : Colors.black,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -59,6 +98,7 @@ class _ChatPageState extends State<ChatPage> {
       appBar: AppBar(
         title: Text(widget.advisorName),
       ),
+
       body: Column(
         children: [
 
@@ -69,23 +109,10 @@ class _ChatPageState extends State<ChatPage> {
               reverse: true,
               itemCount: messages.length,
               itemBuilder: (context, index) {
-                final m = messages[messages.length - 1 - index]; // inversé pour avoir le dernier en bas
-                final isMe = m["sender_role"] == "student"; // backend doit renvoyer role
-                return Align(
-                  alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isMe ? Colors.blue : Colors.grey[300],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      m["message"] ?? "",
-                      style: TextStyle(color: isMe ? Colors.white : Colors.black),
-                    ),
-                  ),
-                );
+
+                final m = messages[messages.length - 1 - index];
+
+                return buildMessage(m);
               },
             ),
           ),
@@ -95,6 +122,7 @@ class _ChatPageState extends State<ChatPage> {
             color: Colors.grey[100],
             child: Row(
               children: [
+
                 Expanded(
                   child: TextField(
                     controller: _controller,
@@ -104,10 +132,12 @@ class _ChatPageState extends State<ChatPage> {
                     ),
                   ),
                 ),
+
                 IconButton(
                   icon: const Icon(Icons.send),
                   onPressed: sendMessage,
                 ),
+
               ],
             ),
           ),
@@ -117,6 +147,4 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 }
-
-
 
