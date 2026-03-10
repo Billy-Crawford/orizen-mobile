@@ -1,42 +1,57 @@
 // lib/features/chat/data/chat_service.dart
 
-import 'package:dio/dio.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../../../core/constants/api_constants.dart';
 import '../../../core/services/token_service.dart';
 
 class ChatService {
 
-  final Dio _dio = Dio();
-
-  Future<Response> getMessages(int userId) async {
+  static Future<List<dynamic>> getMessages(int relationId) async {
 
     final token = await TokenService.getAccessToken();
 
-    return _dio.get(
-      "${ApiConstants.baseUrl}/users/chat/$userId/",
-      options: Options(
-        headers: {
-          "Authorization": "Bearer $token",
-        },
-      ),
+    final response = await http.get(
+      Uri.parse("${ApiConstants.baseUrl}/api/users/chat/$relationId/"),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
     );
+
+    if (response.statusCode == 200) {
+
+      return jsonDecode(response.body);
+
+    } else {
+
+      throw Exception("Erreur récupération messages : ${response.body}");
+    }
   }
 
-  Future<Response> sendMessage(int userId, String message) async {
+  static Future<void> sendMessage(
+      int relationId,
+      String content,
+      ) async {
 
     final token = await TokenService.getAccessToken();
 
-    return _dio.post(
-      "${ApiConstants.baseUrl}/users/chat/$userId/send/",
-      data: {
-        "message": message,
+    final response = await http.post(
+      Uri.parse("${ApiConstants.baseUrl}/api/users/chat/$relationId/send/"),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
       },
-      options: Options(
-        headers: {
-          "Authorization": "Bearer $token",
-        },
-      ),
+      body: jsonEncode({
+        "message": content
+      }),
     );
+
+    if (response.statusCode != 201) {
+
+      throw Exception("Erreur envoi message : ${response.body}");
+    }
   }
 }
+
 

@@ -14,7 +14,6 @@ class StudentsListPage extends StatefulWidget {
 class _StudentsListPageState extends State<StudentsListPage> {
 
   final AdvisorService _service = AdvisorService();
-
   List<dynamic> students = [];
   bool loading = true;
 
@@ -29,11 +28,11 @@ class _StudentsListPageState extends State<StudentsListPage> {
       final response = await _service.getMyStudents();
 
       setState(() {
-        students = response.data;
+        students = response.data ?? [];
         loading = false;
       });
     } catch (e) {
-      print("Erreur chargement étudiants: $e");
+      debugPrint("Erreur chargement étudiants: $e");
       setState(() => loading = false);
     }
   }
@@ -47,34 +46,38 @@ class _StudentsListPageState extends State<StudentsListPage> {
       );
     }
 
+    if (students.isEmpty) {
+      return const Scaffold(
+        body: Center(child: Text("Aucun étudiant assigné")),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Mes étudiants"),
       ),
-
       body: ListView.builder(
         itemCount: students.length,
         itemBuilder: (context, index) {
 
-          final student = students[index];
+          final relation = students[index];
+          final student = relation['student'];
 
           return ListTile(
             leading: const Icon(Icons.person),
-            title: Text(student["username"]),
+            title: Text(student["username"] ?? "Étudiant"),
             subtitle: Text(student["email"] ?? ""),
 
             onTap: () {
-
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => ChatPage(
-                    userId: student["id"],
-                    username: student["username"],
+                    relationId: relation['id'],               // 🔹 obligatoire
+                    advisorName: student['username'] ?? "Étudiant", // 🔹 obligatoire
                   ),
                 ),
               );
-
             },
           );
         },
@@ -82,3 +85,4 @@ class _StudentsListPageState extends State<StudentsListPage> {
     );
   }
 }
+

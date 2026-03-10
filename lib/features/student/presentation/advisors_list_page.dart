@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../../auth/data/student_service.dart';
+import '../../chat/presentation/chat_page.dart';
 
 class AdvisorsListPage extends StatefulWidget {
   const AdvisorsListPage({super.key});
@@ -12,8 +13,9 @@ class AdvisorsListPage extends StatefulWidget {
 
 class _AdvisorsListPageState extends State<AdvisorsListPage> {
   final StudentService _service = StudentService();
+
   bool _loading = true;
-  List<dynamic> _advisors = [];
+  List<dynamic> _relations = [];
 
   @override
   void initState() {
@@ -24,52 +26,76 @@ class _AdvisorsListPageState extends State<AdvisorsListPage> {
   Future<void> _fetchAdvisors() async {
     try {
       final response = await _service.getAdvisors();
+
       setState(() {
-        _advisors = response.data;
+        _relations = response.data ?? [];
         _loading = false;
       });
     } catch (e) {
-      print("Erreur fetch advisors: $e");
-      setState(() => _loading = false);
-    }
-  }
+      debugPrint("Erreur fetch advisors: $e");
 
-  Future<void> _sendRequest(int advisorId) async {
-    try {
-      final response = await _service.sendAdvisorRequest(advisorId);
+      setState(() => _loading = false);
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(response.data['message'] ?? 'Demande envoyée')),
-      );
-    } catch (e) {
-      print("Erreur send request: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Erreur lors de l'envoi")),
+        const SnackBar(
+          content: Text("Impossible de récupérer les conseillers"),
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(8),
-      itemCount: _advisors.length,
-      itemBuilder: (context, index) {
-        final advisor = _advisors[index];
-        return Card(
-          child: ListTile(
-            title: Text(advisor['username']),
-            subtitle: Text(advisor['email']),
-            trailing: ElevatedButton(
-              child: const Text("Demande"),
-              onPressed: () => _sendRequest(advisor['id']),
+    if (_relations.isEmpty) {
+      return const Scaffold(
+        body: Center(child: Text("Aucun conseiller trouvé")),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(title: const Text("Mes conseillers")),
+
+      body: ListView.builder(
+        padding: const EdgeInsets.all(8),
+        itemCount: _relations.length,
+        itemBuilder: (context, index) {
+
+          final relation = _relations[index];
+          final advisor = relation['advisor'];
+
+          return Card(
+            margin: const EdgeInsets.symmetric(vertical: 6),
+
+            child: ListTile(
+              title: Text(advisor['username'] ?? "Nom inconnu"),
+              subtitle: Text(advisor['email'] ?? ""),
+
+              trailing: const Icon(Icons.chat),
+
+              onTap: () {
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ChatPage(
+                      relationId: relation['id'], // ✅ ID RELATION
+                      advisorName: advisor['username'] ?? "Conseiller",
+                    ),
+                  ),
+                );
+              },
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }
+
