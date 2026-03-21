@@ -5,6 +5,7 @@ import '../../../core/services/token_service.dart';
 import '../data/chat_service.dart';
 
 class ChatPage extends StatefulWidget {
+
   final int relationId;
   final String advisorName;
 
@@ -20,7 +21,7 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
 
-  List messages = [];
+  List<Map<String, dynamic>> messages = [];
   bool loading = true;
 
   int? myUserId;
@@ -42,12 +43,42 @@ class _ChatPageState extends State<ChatPage> {
 
     setState(() => loading = true);
 
-    final data = await ChatService.getMessages(widget.relationId);
+    try {
 
-    setState(() {
-      messages = data;
-      loading = false;
-    });
+      final data = await ChatService.getMessages(widget.relationId);
+
+      final List<Map<String, dynamic>> cleanMessages = [];
+
+      for (final item in data) {
+
+        // 🔒 Vérification stricte du type
+        if (item == null) continue;
+
+        if (item is Map) {
+
+          final map = Map<String, dynamic>.from(item);
+
+          // 🔒 Vérification des champs obligatoires
+          if (map["message"] != null && map["sender"] != null) {
+            cleanMessages.add(map);
+          }
+        }
+      }
+
+      setState(() {
+        messages = cleanMessages;
+        loading = false;
+      });
+
+    } catch (e) {
+
+      debugPrint("❌ LOAD ERROR: $e");
+
+      setState(() {
+        messages = [];
+        loading = false;
+      });
+    }
   }
 
   void sendMessage() async {
@@ -57,14 +88,19 @@ class _ChatPageState extends State<ChatPage> {
 
     _controller.clear();
 
-    await ChatService.sendMessage(widget.relationId, content);
-
-    loadMessages();
+    try {
+      await ChatService.sendMessage(widget.relationId, content);
+      loadMessages();
+    } catch (e) {
+      debugPrint("❌ SEND ERROR: $e");
+    }
   }
 
-  Widget buildMessage(Map m) {
+  Widget buildMessage(Map<String, dynamic> m) {
 
-    final bool isMe = m["sender"] == myUserId;
+    final isMe = m["sender"] == myUserId;
+
+    final message = (m["message"] ?? "").toString();
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -74,15 +110,10 @@ class _ChatPageState extends State<ChatPage> {
         constraints: const BoxConstraints(maxWidth: 280),
         decoration: BoxDecoration(
           color: isMe ? Colors.blue : Colors.grey[300],
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(12),
-            topRight: const Radius.circular(12),
-            bottomLeft: Radius.circular(isMe ? 12 : 0),
-            bottomRight: Radius.circular(isMe ? 0 : 12),
-          ),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
-          m["message"] ?? "",
+          message,
           style: TextStyle(
             color: isMe ? Colors.white : Colors.black,
           ),
@@ -105,6 +136,8 @@ class _ChatPageState extends State<ChatPage> {
           Expanded(
             child: loading
                 ? const Center(child: CircularProgressIndicator())
+                : messages.isEmpty
+                ? const Center(child: Text("Aucun message"))
                 : ListView.builder(
               reverse: true,
               itemCount: messages.length,
@@ -117,34 +150,28 @@ class _ChatPageState extends State<ChatPage> {
             ),
           ),
 
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            color: Colors.grey[100],
-            child: Row(
-              children: [
+          Row(
+            children: [
 
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(
-                      hintText: "Écrire un message...",
-                      border: InputBorder.none,
-                    ),
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  decoration: const InputDecoration(
+                    hintText: "Écrire un message...",
                   ),
                 ),
+              ),
 
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: sendMessage,
-                ),
+              IconButton(
+                icon: const Icon(Icons.send),
+                onPressed: sendMessage,
+              ),
 
-              ],
-            ),
-          ),
+            ],
+          )
 
         ],
       ),
     );
   }
 }
-

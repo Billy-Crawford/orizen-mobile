@@ -14,8 +14,10 @@ class StudentsListPage extends StatefulWidget {
 class _StudentsListPageState extends State<StudentsListPage> {
 
   final AdvisorService _service = AdvisorService();
-  List<dynamic> students = [];
+
+  List<Map<String, dynamic>> students = [];
   bool loading = true;
+  String? error;
 
   @override
   void initState() {
@@ -27,14 +29,57 @@ class _StudentsListPageState extends State<StudentsListPage> {
     try {
       final response = await _service.getMyStudents();
 
+      debugPrint("🔥 RAW DATA => ${response.data}");
+
+      final data = response.data;
+
+      if (data is List) {
+        students = data
+            .where((e) => e != null && e is Map<String, dynamic>)
+            .map<Map<String, dynamic>>((e) => e)
+            .toList();
+      } else {
+        throw Exception("Format API invalide");
+      }
+
       setState(() {
-        students = response.data ?? [];
         loading = false;
       });
+
     } catch (e) {
-      debugPrint("Erreur chargement étudiants: $e");
-      setState(() => loading = false);
+      debugPrint("❌ ERREUR FETCH STUDENTS: $e");
+
+      setState(() {
+        error = "Impossible de charger les étudiants";
+        loading = false;
+      });
     }
+  }
+
+  void openChat(Map<String, dynamic> student) {
+
+    final relationId = student["relation_id"];
+
+    if (relationId == null) {
+      debugPrint("⚠️ relation_id manquant pour: $student");
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Impossible d’ouvrir le chat (relation manquante)"),
+        ),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatPage(
+          relationId: relationId,
+          advisorName: student["username"] ?? "Étudiant",
+        ),
+      ),
+    );
   }
 
   @override
@@ -43,6 +88,17 @@ class _StudentsListPageState extends State<StudentsListPage> {
     if (loading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (error != null) {
+      return Scaffold(
+        body: Center(
+          child: Text(
+            error!,
+            style: const TextStyle(color: Colors.red),
+          ),
+        ),
       );
     }
 
@@ -56,33 +112,49 @@ class _StudentsListPageState extends State<StudentsListPage> {
       appBar: AppBar(
         title: const Text("Mes étudiants"),
       ),
-      body: ListView.builder(
-        itemCount: students.length,
-        itemBuilder: (context, index) {
 
-          final relation = students[index];
-          final student = relation['student'];
+      body: RefreshIndicator(
+        onRefresh: fetchStudents,
+        child: ListView.builder(
+          itemCount: students.length,
 
-          return ListTile(
-            leading: const Icon(Icons.person),
-            title: Text(student["username"] ?? "Étudiant"),
-            subtitle: Text(student["email"] ?? ""),
+          itemBuilder: (context, index) {
 
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ChatPage(
-                    relationId: relation['id'],               // 🔹 obligatoire
-                    advisorName: student['username'] ?? "Étudiant", // 🔹 obligatoire
+            final student = students[index];
+
+            // 🔒 SAFE ACCESS
+            final username =
+            (student["username"] ?? "Inconnu").toString();
+
+            final email =
+            (student["email"] ?? "").toString();
+
+            return Card(
+              margin: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 6,
+              ),
+
+              child: ListTile(
+                leading: CircleAvatar(
+                  child: Text(
+                    username.isNotEmpty
+                        ? username[0].toUpperCase()
+                        : "?",
                   ),
                 ),
-              );
-            },
-          );
-        },
+
+                title: Text(username),
+                subtitle: Text(email),
+
+                trailing: const Icon(Icons.chat),
+
+                onTap: () => openChat(student),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
 }
-

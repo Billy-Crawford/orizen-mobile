@@ -1,6 +1,7 @@
 // lib/features/chat/presentation/chat_list_page.dart
 
 import 'package:flutter/material.dart';
+import 'package:orizen_mobile/features/advisor/presentation/advisor_requests_page.dart';
 import '../../advisor/presentation/students_list_page.dart';
 import '../../auth/presentation/my_advisor_page.dart';
 import '../../../core/services/token_service.dart';
@@ -39,7 +40,7 @@ class _ChatListPageState extends State<ChatListPage> {
     }
 
     if (role == "advisor") {
-      return const StudentsListPage();
+      return const AdvisorRequestsPage();
     }
 
     return const MyAdvisorPage();
